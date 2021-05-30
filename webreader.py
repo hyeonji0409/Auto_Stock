@@ -14,8 +14,8 @@ def get_financial_statements(code):
     re_enc = re.compile("encparam: '(.*)'", re.IGNORECASE)
     re_id = re.compile("id: '([a-zA-Z0-9]*)' ?", re.IGNORECASE)
 
-    url = "https://companyinfo.stock.naver.com/v1/company/c1010001.aspx?cmp_cd={}".format(code)
-    html = requests.get(url).text
+    url = "http://companyinfo.stock.naver.com/v1/company/c1010001.aspx?cmp_cd={}".format(code)
+    html = requests.get(url, verify=False).text
 
     search = re_enc.search(html)
     if search is None:
@@ -24,13 +24,13 @@ def get_financial_statements(code):
     encid = re_id.search(html).group(1)
 
     # 스크래핑
-    url = "https://companyinfo.stock.naver.com/v1/company/ajax/cF1001.aspx?cmp_cd={}&fin_typ=0&freq_typ=A&encparam={}&id={}".format(
+    url = "http://companyinfo.stock.naver.com/v1/company/ajax/cF1001.aspx?cmp_cd={}&fin_typ=0&freq_typ=A&encparam={}&id={}".format(
         code, encparam, encid)
     headers = {"Referer": "HACK"}
-    html = requests.get(url, headers=headers).text
+    html = requests.get(url, headers=headers, verify=False).text
 
     soup = BeautifulSoup(html, "html5lib")
-    dividend = soup.select("table:nth-of-type(2) tr:nth-of-type(33) td span")
+    dividend = soup.select("table:nth-of-type(2) tr:nth-of-type(31) td span")
     years = soup.select("table:nth-of-type(2) th")
 
     dividend_dict = {}
@@ -41,8 +41,8 @@ def get_financial_statements(code):
 
 
 def get_3year_treasury():
-    url = "http://www.index.go.kr/strata/jsp/showStblGams3.jsp?stts_cd=288401&amp;idx_cd=2884&amp;freq=Y&amp;period=1998:2018"
-    html = requests.get(url).text
+    url = "http://www.index.go.kr/strata/jsp/showStblGams3.jsp?stts_cd=107301&idx_cd=1073&freq=Y&period=1997%3A2021"
+    html = requests.get(url, verify=False).text
     soup = BeautifulSoup(html, 'html5lib')
     td_data = soup.select("tr td")
 
@@ -52,13 +52,15 @@ def get_3year_treasury():
     for x in td_data:
         treasury_3year[start_year] = x.text
         start_year += 1
+        if start_year == datetime.datetime.now().year:
+            break
 
     return treasury_3year
 
 
 def get_dividend_yield(code):
     url = "http://companyinfo.stock.naver.com/company/c1010001.aspx?cmp_cd=" + code
-    html = requests.get(url).text
+    html = requests.get(url, verify=False).text
 
     soup = BeautifulSoup(html, 'html5lib')
     dt_data = soup.select("td dl dt")
@@ -80,7 +82,7 @@ def get_estimated_dividend_yield(code):
 
 def get_current_3year_treasury():
     url = "http://finance.naver.com/marketindex/interestDailyQuote.nhn?marketindexCd=IRR_GOVT03Y&page=1"
-    html = requests.get(url).text
+    html = requests.get(url, verify=False).text
 
     soup = BeautifulSoup(html, 'html5lib')
     td_data = soup.select("tr td")

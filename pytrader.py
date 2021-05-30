@@ -1,18 +1,32 @@
 import sys
-from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-from PyQt5 import uic
 from Kiwoom import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5 import uic
+from PyQt5 import QtCore, QtGui, QtWidgets
 import time
+from pandas_datareader import data
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from mplfinance.original_flavor import candlestick2_ohlc
+from datetime import datetime
+import matplotlib.ticker as ticker
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
+import plotly.graph_objects as go
+from IPython.display import display
 form_class = uic.loadUiType("pytrader.ui")[0]
+
+start_date = datetime(2020,5,8)
+end_date = datetime(2020,10,8)
+
 
 class MyWindow(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+
 
         self.trade_stocks_done = False
 
@@ -36,17 +50,155 @@ class MyWindow(QMainWindow, form_class):
         self.lineEdit.textChanged.connect(self.code_changed)
         self.pushButton.clicked.connect(self.send_order)
         self.pushButton_2.clicked.connect(self.check_balance)
+        self.pushButton_4.clicked.connect(self.show_graph)
+
+       # 차트확인하기 버튼
+        self.button = QPushButton('차트 확인',self)
+        self.button.clicked.connect(self.chart)
+       #self.button.clicked.connect(self.show_graph)
+        self.button.setGeometry(105,239,75,23)
+        self.chart = QDialog()
+
 
         self.load_buy_sell_list()
+
+    def show_graph(self):
+        code = self.lineEdit.text()
+        #df = data.DataReader(code + ".ks", "yahoo")
+        df = data.get_data_yahoo(code + ".ks", start_date, end_date)
+        # df['MA20'] = df['Adj Close'].rolling(window=20).mean()
+        # df['MA60'] = df['Adj Close'].rolling(window=60).mean()
+        fig = plt.figure(figsize=(20, 10))
+        ax = self.fig.add_subplot(111)
+        candlestick2_ohlc(ax, df['Open'], df['High'],
+                          df['Low'], df['Close'],
+                          width=0.5, colorup='r', colordown='b')
+        # ax.plot(df.index, df['Adj Close'], label='Adj Close')
+        # ax.plot(df.index, df['MA20'], label='MA20')
+        # ax.plot(df.index, df['MA60'], label='MA60')
+        #df['MA5'] = df['Close'].rolling(5).mean()
+        #df['MA10'] = df['Close'].rolling(10).mean()
+        #ax.plot(df.index, df[['Close', 'MA5', 'MA10']])
+        ax.legend(loc='upper right')
+        #ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
+        ax.set_title('Candle Chart', fontsize=22)
+        ax.set_xlabel('Date')
+        plt.xticks(rotation=45)
+        ax.legend()
+        ax.grid()
+        plt.grid()
+        """candle = go.Candlestick(x=df.index,
+            open=df['Open'],
+            high=df['High'],
+            low=df['Low'],
+            close=df['Close'])
+        fig = go.Figure(data=candle)
+        fig.show()"""
+        self.canvas.draw()
+
+
+    def chart(self):
+        self.chart.setGeometry(600, 200, 1200, 600)
+        self.chart.setWindowTitle("PyChart Viewer v0.1")
+        self.chart.setWindowIcon(QIcon('icon.png'))
+
+        self.chart.lineEdit = QLineEdit()
+        self.chart.button1 = QPushButton("차트그리기")
+        self.chart.button1.clicked.connect(self.ButtonClicked)
+
+        self.chart.button2 = QPushButton("유동성차트 확인")
+        self.chart.button2.clicked.connect(self.ButtonClicked1)
+
+        self.fig = plt.Figure()
+        self.canvas = FigureCanvas(self.fig)
+
+        leftLayout = QVBoxLayout()
+        leftLayout.addWidget(self.canvas)
+
+        # Right Layout
+        rightLayout = QVBoxLayout()
+        rightLayout.addWidget(self.lineEdit)
+        rightLayout.addWidget(self.chart.button1)
+        rightLayout.addWidget(self.chart.button2)
+        rightLayout.addStretch(1)
+
+        layout = QHBoxLayout()
+        layout.addLayout(leftLayout)
+        layout.addLayout(rightLayout)
+        layout.setStretchFactor(leftLayout, 1)
+        layout.setStretchFactor(rightLayout, 0)
+
+        self.chart.setLayout(layout)
+        self.chart.show()
+
+    def ButtonClicked1(self):
+        code = self.lineEdit.text()
+        df = data.DataReader(code + ".ks", "yahoo")
+        candle = go.Candlestick(x=df.index,
+                                open=df['Open'],
+                                high=df['High'],
+                                low=df['Low'],
+                                close=df['Close'])
+        fig = go.Figure(data=candle)
+        fig.show()
+
+
+
+
+    def ButtonClicked(self):
+
+        code = self.lineEdit.text()
+        #df = data.DataReader(code + ".ks", "yahoo")
+        df = data.get_data_yahoo(code + ".ks", start_date, end_date)
+        #df['MA20'] = df['Adj Close'].rolling(window=20).mean()
+        #df['MA60'] = df['Adj Close'].rolling(window=60).mean()
+
+        fig = plt.figure(figsize=(20,10))
+
+        ax = self.fig.add_subplot(111)
+
+        candlestick2_ohlc(ax, df['Open'], df['High'],
+                          df['Low'], df['Close'],
+                          width=0.5, colorup='r', colordown='b')
+        #ax.plot(df.index, df['Adj Close'], label='Adj Close')
+        #ax.plot(df.index, df['MA20'], label='MA20')
+        #ax.plot(df.index, df['MA60'], label='MA60')
+        df['MA5'] = df['Close'].rolling(5).mean()
+        df['MA10'] = df['Close'].rolling(10).mean()
+        ax.plot(df.index, df[['Close', 'MA5', 'MA10']])
+        ax.legend(loc='upper right')
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
+        ax.set_title('Candle Chart', fontsize=22)
+        ax.set_xlabel('Date')
+        plt.xticks(rotation=45)
+        ax.legend()
+        ax.grid()
+        plt.grid()
+        """candle = go.Candlestick(x=df.index,
+            open=df['Open'],
+            high=df['High'],
+            low=df['Low'],
+            close=df['Close'])
+        fig = go.Figure(data=candle)
+        fig.show()"""
+        self.canvas.draw()
+
+
+
+
+
+    def closeEvent(self, event):
+
+        self.deleteLater()
 
     def trade_stocks(self):
         hoga_lookup = {'지정가': "00", '시장가': "03"}
 
-        f = open("buy_list.txt", 'rt', encoding='UTF-8')
+        f = open("buy_list.txt", 'rt', encoding='utf-8')
         buy_list = f.readlines()
         f.close()
 
-        f = open("sell_list.txt", 'rt', encoding='UTF-8')
+        f = open("sell_list.txt", 'rt', encoding='utf-8')
         sell_list = f.readlines()
         f.close()
 
@@ -80,7 +232,7 @@ class MyWindow(QMainWindow, form_class):
             buy_list[i] = buy_list[i].replace("매수전", "주문완료")
 
         # file update
-        f = open("buy_list.txt", 'wt', encoding='UTF-8')
+        f = open("buy_list.txt", 'wt', encoding='utf-8')
         for row_data in buy_list:
             f.write(row_data)
         f.close()
@@ -90,17 +242,17 @@ class MyWindow(QMainWindow, form_class):
             sell_list[i] = sell_list[i].replace("매도전", "주문완료")
 
         # file update
-        f = open("sell_list.txt", 'wt', encoding='UTF-8')
+        f = open("sell_list.txt", 'wt', encoding='utf-8')
         for row_data in sell_list:
             f.write(row_data)
         f.close()
 
     def load_buy_sell_list(self):
-        f = open("buy_list.txt", 'rt', encoding='UTF-8')
+        f = open("buy_list.txt", 'rt', encoding='utf-8')
         buy_list = f.readlines()
         f.close()
 
-        f = open("sell_list.txt", 'rt', encoding='UTF-8')
+        f = open("sell_list.txt", 'rt', encoding='utf-8')
         sell_list = f.readlines()
         f.close()
 
@@ -214,8 +366,15 @@ class MyWindow(QMainWindow, form_class):
 
         self.tableWidget_2.resizeRowsToContents()
 
+    def closeEvent(self, event):
+
+         self.deleteLater()
+
+
+
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    myWindow = MyWindow()
-    myWindow.show()
-    sys.exit(app.exec_())
+     app = QApplication(sys.argv)
+     myWindow = MyWindow()
+     myWindow.show()
+     sys.exit(app.exec())
+     window = MWindow()

@@ -117,6 +117,7 @@ class Kiwoom(QAxWidget):
             format_data = format(int(strip_data), ',d')
         except:
             format_data = format(float(strip_data))
+
         if data.startswith('-'):
             format_data = '-' + format_data
 
@@ -202,6 +203,7 @@ class Kiwoom(QAxWidget):
 
             self.opw00018_output['multi'].append([name, quantity, purchase_price, current_price, eval_profit_loss_price,
                                                   earning_rate])
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
